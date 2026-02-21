@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Students</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-3">
+    <a class="navbar-brand fw-semibold" href="#">Attendance Tracker</a>
+    <div class="ms-auto d-flex gap-3 align-items-center">
+        <span class="text-light small">Welcome, <span sec:authentication="name"></span></span>
+        <form th:action="@{/logout}" method="post" class="mb-0">
+            <button type="submit" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </button>
+        </form>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Sidebar -->
+        <div class="col-md-2 bg-light min-vh-100 pt-3 border-end">
+            <ul class="nav flex-column gap-1">
+                <li><a href="/admin/dashboard" class="nav-link text-dark"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                <li><a href="/admin/teachers" class="nav-link text-dark"><i class="bi bi-person-workspace me-2"></i>Teachers</a></li>
+                <li><a href="/admin/students" class="nav-link text-dark fw-semibold"><i class="bi bi-people me-2"></i>Students</a></li>
+                <li><a href="/admin/reports" class="nav-link text-dark"><i class="bi bi-bar-chart me-2"></i>Reports</a></li>
+            </ul>
+        </div>
+
+        <!-- Content -->
+        <div class="col-md-10 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Manage Students</h5>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <i class="bi bi-plus-lg"></i> Add Student
+                </button>
+            </div>
+
+            <!-- Search -->
+            <form action="/admin/students" method="get" class="mb-3 d-flex gap-2">
+                <input type="text" name="q" class="form-control form-control-sm"
+                       style="max-width: 300px;"
+                       placeholder="Search by name, roll number, class..."
+                       th:value="${query}">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">
+                    <i class="bi bi-search"></i> Search
+                </button>
+                <a href="/admin/students" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Full Name</th>
+                        <th>Roll No.</th>
+                        <th>Class</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="s, stat : ${students}">
+                        <td th:text="${stat.count}"></td>
+                        <td th:text="${s.fullName}"></td>
+                        <td th:text="${s.rollNumber}"></td>
+                        <td th:text="${s.className}"></td>
+                        <td th:text="${s.email}"></td>
+                        <td th:text="${s.phone}"></td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <!--
+                                    FIX: data-* attributes instead of th:onclick string interpolation.
+                                    The old approach broke when names contained apostrophes (e.g. O'Brien)
+                                    because Thymeleaf would emit: openEditStudent(1, 'O'Brien', ...)
+                                    which is invalid JavaScript.  data-* attributes are HTML-escaped by
+                                    Thymeleaf automatically, so they are always safe.
+                                -->
+                                <button class="btn btn-sm btn-outline-warning edit-student-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editStudentModal"
+                                        th:data-id="${s.id}"
+                                        th:data-fullname="${s.fullName}"
+                                        th:data-rollnumber="${s.rollNumber}"
+                                        th:data-classname="${s.className}"
+                                        th:data-email="${s.email}"
+                                        th:data-phone="${s.phone}">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <a th:href="@{/admin/students/delete/{id}(id=${s.id})}"
+                                   class="btn btn-sm btn-outline-danger"
+                                   onclick="return confirm('Delete this student? Their attendance records will also be removed.')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${students.empty}">
+                        <td colspan="7" class="text-center text-muted py-3">No students found.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/students/add" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="fullName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Roll Number</label>
+                        <input type="text" name="rollNumber" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Class (e.g. 10-A)</label>
+                        <input type="text" name="className" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal fade" id="editStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editStudentForm" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" id="esFullName" name="fullName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Roll Number</label>
+                        <input type="text" id="esRollNumber" name="rollNumber" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Class</label>
+                        <input type="text" id="esClassName" name="className" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="esEmail" name="email" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" id="esPhone" name="phone" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Update Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Populate the Edit modal from data-* attributes on the clicked button.
+    // This is safe for all characters including apostrophes, quotes, and special symbols.
+    document.getElementById('editStudentModal').addEventListener('show.bs.modal', function (event) {
+        const btn = event.relatedTarget;   // the Edit button that triggered the modal
+        const id         = btn.getAttribute('data-id');
+        const fullName   = btn.getAttribute('data-fullname')   || '';
+        const rollNumber = btn.getAttribute('data-rollnumber') || '';
+        const className  = btn.getAttribute('data-classname')  || '';
+        const email      = btn.getAttribute('data-email')      || '';
+        const phone      = btn.getAttribute('data-phone')      || '';
+
+        document.getElementById('esFullName').value   = fullName;
+        document.getElementById('esRollNumber').value = rollNumber;
+        document.getElementById('esClassName').value  = className;
+        document.getElementById('esEmail').value      = email;
+        document.getElementById('esPhone').value      = phone;
+
+        // Set the form POST target URL dynamically
+        document.getElementById('editStudentForm').action = '/admin/students/edit/' + id;
+    });
+</script>
+</body>
+</html>

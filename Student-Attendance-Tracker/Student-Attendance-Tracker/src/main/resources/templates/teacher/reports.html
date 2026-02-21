@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Reports</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-3">
+    <a class="navbar-brand fw-semibold" href="#">Attendance Tracker</a>
+    <div class="ms-auto d-flex gap-3 align-items-center">
+        <span class="text-light small">Welcome, <span sec:authentication="name"></span></span>
+        <form th:action="@{/logout}" method="post" class="mb-0">
+            <button type="submit" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </button>
+        </form>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 bg-light min-vh-100 pt-3 border-end">
+            <ul class="nav flex-column gap-1">
+                <li><a href="/teacher/dashboard" class="nav-link text-dark"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                <li><a href="/teacher/attendance" class="nav-link text-dark"><i class="bi bi-calendar-check me-2"></i>Mark Attendance</a></li>
+                <li><a href="/teacher/reports" class="nav-link text-dark fw-semibold"><i class="bi bi-bar-chart me-2"></i>Reports</a></li>
+            </ul>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <h5 class="mb-3">Attendance Reports</h5>
+
+            <!-- Filter form -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <form th:action="@{/teacher/reports}" method="get" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Student</label>
+                            <select name="studentId" class="form-select form-select-sm">
+                                <option value="">-- Select Student --</option>
+                                <option th:each="s : ${students}"
+                                        th:value="${s.id}"
+                                        th:text="${s.fullName} + ' (' + ${s.className} + ')'"
+                                        th:selected="${s.id == selectedStudentId}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Month</label>
+                            <select name="month" class="form-select form-select-sm">
+                                <option value="1"  th:selected="${selectedMonth == 1}">January</option>
+                                <option value="2"  th:selected="${selectedMonth == 2}">February</option>
+                                <option value="3"  th:selected="${selectedMonth == 3}">March</option>
+                                <option value="4"  th:selected="${selectedMonth == 4}">April</option>
+                                <option value="5"  th:selected="${selectedMonth == 5}">May</option>
+                                <option value="6"  th:selected="${selectedMonth == 6}">June</option>
+                                <option value="7"  th:selected="${selectedMonth == 7}">July</option>
+                                <option value="8"  th:selected="${selectedMonth == 8}">August</option>
+                                <option value="9"  th:selected="${selectedMonth == 9}">September</option>
+                                <option value="10" th:selected="${selectedMonth == 10}">October</option>
+                                <option value="11" th:selected="${selectedMonth == 11}">November</option>
+                                <option value="12" th:selected="${selectedMonth == 12}">December</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Year</label>
+                            <input type="number" name="year" class="form-control form-control-sm"
+                                   th:value="${selectedYear}" style="width:100px">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-primary w-100">
+                                <i class="bi bi-search me-1"></i>View Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- No students assigned yet -->
+            <div th:if="${students == null or students.empty}" class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                No students are assigned to you yet. Contact admin to assign students.
+            </div>
+
+            <!-- FIX 2: Report results — use selectedStudentName from model (set by controller)
+                 instead of the broken Thymeleaf SpEL collection filter that caused the crash -->
+            <div th:if="${records != null}">
+                <h6 class="mb-2">
+                    Results for: <strong th:text="${selectedStudentName != null ? selectedStudentName : 'Student'}">Student</strong>
+                    &mdash; <span th:text="${monthName} + ' ' + ${selectedYear}"></span>
+                </h6>
+
+                <div class="d-flex gap-2 mb-3 flex-wrap">
+                    <span class="badge bg-success fs-6 px-3 py-2">
+                        <i class="bi bi-check-circle me-1"></i>Present: <span th:text="${percentage}"></span>%
+                    </span>
+                    <span class="badge bg-danger fs-6 px-3 py-2">
+                        <i class="bi bi-x-circle me-1"></i>Absent: <span th:text="${absentPercentage}"></span>%
+                    </span>
+                    <span class="badge bg-secondary fs-6 px-3 py-2">
+                        Days Recorded: <span th:text="${records.size()}"></span>
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover">
+                        <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="r, stat : ${records}">
+                            <td th:text="${stat.count}"></td>
+                            <td th:text="${r.date}"></td>
+                            <td th:text="${r.date.dayOfWeek}"></td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${r.status.name() == 'PRESENT'} ? 'bg-success' : 'bg-danger'"
+                                      th:text="${r.status}"></span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p th:if="${records.empty}" class="text-muted">
+                    No records found for this student in <span th:text="${monthName}"></span>.
+                </p>
+            </div>
+
+            <!-- Prompt if nothing selected yet -->
+            <div th:if="${records == null and (students != null and !students.empty)}" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Select a student and month, then click <strong>View Report</strong>.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
